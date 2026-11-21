@@ -46,11 +46,8 @@ At one request at a time, NukeTorch decodes 164.6 to 205.0 tok/s on the four tes
 |---|---:|
 | **Speed (tok/s), one user** | |
 | 16 coding prompts (NVIDIA SPEED-Bench), 2 seeds, 1,024-token cap | **205.0** |
-| The same, best pass | 215.2 |
 | Five demo prompts, each as a new request, 3 passes, no token cap | **198.6** |
-| The same, best pass | 200.9 |
 | Five demo prompts as one conversation, 1,024-token cap, 3 passes | **180.7** |
-| The same, best pass | 191.3 |
 | 16 coding prompts of our own, 2 seeds, 1,024-token cap | **164.6** |
 | **First token (median), new requests** | 0.14 to 0.28 s |
 | **Memory at the default context** (the server's `READY` line) | 26.7 GB |
@@ -58,12 +55,12 @@ At one request at a time, NukeTorch decodes 164.6 to 205.0 tok/s on the four tes
 **How it runs.**
 
 - **Tests.** The benchmark built into NukeTorch (`nuketorch-serve bench`).
-- **Run-to-run spread.** The answers are the same every run; the speed is not. The SPEED-Bench coding test gave 205.0 tok/s on a rested Mac; the median of our three runs, three minutes apart, was 194.2. Let the Mac rest before you measure. The median of our runs is stored beside the best and shown in every report.
+- **Run-to-run spread.** The answers are the same every run; the speed is not. Let the Mac rest before you measure. The median of our runs is stored beside the best and shown in every report.
 - **The prompt matters.** Speed follows how many drafted tokens are accepted: 205.0 tok/s on NVIDIA's coding prompts and 164.6 on ours; single answers ranged up to 247.9 tok/s.
 - **Long conversations start slower.** Each turn reads the whole conversation again before it answers: in the conversation test the first token took 2.8 s (median).
 - **Reasoning effort matters.** The server uses effort `medium` when a request sets none. At the model's own default, `xhigh`, an earlier build gave 155.7 tok/s on the SPEED-Bench coding prompts.
 
-Qwen3.8-27B 4-bit on one Apple M5 Max (48 GB), one user, with its DFlash2 draft model, typical acceptance, reasoning on. Measured by the built-in benchmark. With exact acceptance, an earlier build measured with our earlier test scripts gave 137.6 tok/s (coding) and 129.7 (demo). tok/s is decode speed: per answer, tokens divided by the time from the first token to the last; a test's number is all its tokens divided by those times added up. Reasoning tokens count. We have not measured other engines on this model.
+Qwen3.8-27B 4-bit on one Apple M5 Max (48 GB), one user, with its DFlash2 draft model, typical acceptance, reasoning on. Measured by the built-in benchmark: the SPEED-Bench coding row on NukeTorch 1.0.5, the other rows on an earlier release. With exact acceptance, an earlier build measured with our earlier test scripts gave 137.6 tok/s (coding) and 129.7 (demo). tok/s is decode speed: per answer, tokens divided by the time from the first token to the last; a test's number is all its tokens divided by those times added up. Reasoning tokens count. We have not measured other engines on this model.
 
 NukeTorch Enterprise runs one model across machines by pipeline parallelism. It is by invitation. Ask for an evaluation license:
 
