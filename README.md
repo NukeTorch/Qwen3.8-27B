@@ -1,4 +1,6 @@
-# NukeTorch - Run Qwen 3.8 27B (4-bit) at 205.0 tok/s on Apple Silicon
+# NukeTorch - Run Qwen 3.8 27B (4-bit) at 200.1 tok/s on Apple Silicon
+
+200.1 tok/s: five demo prompts, 3 passes, NukeTorch 1.0.5 on one M5 Max, from the benchmark report below.
 
 C++ and Metal Tensor Engine serves text and image for inference and training.
 
@@ -62,7 +64,7 @@ At one request at a time, NukeTorch decodes 164.6 to 205.0 tok/s on the four tes
 - **Long conversations start slower.** Each turn reads the whole conversation again before it answers: in the conversation test the first token took 2.8 s (median).
 - **Reasoning effort matters.** The server uses effort `medium` when a request sets none. At the model's own default, `xhigh`, an earlier build gave 155.7 tok/s on the SPEED-Bench coding prompts.
 
-Qwen3.8-27B 4-bit on one Apple M5 Max (48 GB), one user, with its DFlash2 draft model, typical acceptance, reasoning on. Measured by the built-in benchmark: the SPEED-Bench coding row on NukeTorch 1.0.5, the other rows on an earlier release. With exact acceptance, an earlier build measured with our earlier test scripts gave 137.6 tok/s (coding) and 129.7 (demo). tok/s is decode speed: per answer, tokens divided by the time from the first token to the last; a test's number is all its tokens divided by those times added up. Reasoning tokens count. The benchmark report compares NukeTorch with mlx-lm, llama.cpp and oMLX on the same Mac.
+Qwen3.8-27B 4-bit on one Apple M5 Max (48 GB), one user, with its DFlash2 draft model, typical acceptance, reasoning on. Measured by the built-in benchmark: the SPEED-Bench coding row on NukeTorch 1.0.5, the other rows on an earlier release. tok/s is decode speed: per answer, tokens divided by the time from the first token to the last; a test's number is all its tokens divided by those times added up. Reasoning tokens count. The benchmark report compares NukeTorch with mlx-lm, llama.cpp and oMLX on the same Mac.
 
 NukeTorch Enterprise runs one model across machines by pipeline parallelism. It is by invitation. Ask for an evaluation license:
 
