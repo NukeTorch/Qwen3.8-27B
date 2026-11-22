@@ -1,6 +1,6 @@
-# NukeTorch - Run Qwen 3.8 27B (4-bit) at 200.1 tok/s on Apple Silicon
+# NukeTorch - Run Qwen 3.8 27B (4-bit) at 200.3 tok/s on Apple Silicon
 
-200.1 tok/s: five demo prompts, 3 passes, NukeTorch 1.0.5 on one M5 Max, from the benchmark report below.
+200.3 tok/s: prompt A (5 coding prompts, 3 passes), NukeTorch 1.0.5 on one M5 Max, from the benchmark report below.
 
 C++ and Metal Tensor Engine serves text and image for inference and training.
 
@@ -42,33 +42,51 @@ curl http://127.0.0.1:8080/v1/chat/completions -H 'Content-Type: application/jso
 
 ### Benchmark Summary
 
-At one request at a time, NukeTorch decodes 164.6 to 205.0 tok/s on the four tests below.
+At one request at a time, NukeTorch decodes 126.3 to 327.4 tok/s on prompts A to D. With 8 users at once NukeTorch generates 345.2 tok/s in total.
 
-**Table 1. Speed and memory**
+**Table 1. Speed, RAM and energy**
 
-| | NukeTorch |
-|---|---:|
-| **Speed (tok/s), one user** | |
-| 16 coding prompts (NVIDIA SPEED-Bench), 2 seeds, 1,024-token cap | **205.0** |
-| Five demo prompts, each as a new request, 3 passes, no token cap | **198.6** |
-| Five demo prompts as one conversation, 1,024-token cap, 3 passes | **180.7** |
-| 16 coding prompts of our own, 2 seeds, 1,024-token cap | **164.6** |
-| **First token (median), new requests** | 0.14 to 0.28 s |
-| **Memory at the default context** (the server's `READY` line) | 26.7 GB |
+| | NukeTorch 1.0.5 | mlx-lm<br>0.32.2 | llama.cpp<br>1.0.0 build 12359 | oMLX<br>0.8.0rc1 Splash + DFlash2 |
+|---|---:|---:|---:|---:|
+| **Speed (tok/s)** | | | | |
+| Prompt A (5 coding prompts) | **200.3** | 31.6 | 24.8\* | 101.8 |
+| Prompt B (count to 100) | **327.4** | 32.1 | 25.1\* | 184.2 |
+| Prompt C (short story) | 126.3 | 31.8 | 24.8\* | **136.3** |
+| Prompt D (coding-15) | **173.4** | 31.0 | 25.4\* | 106.3 |
+| 2 users at once | **237.2** | 31.0 | 37.8 | 156.3 |
+| 4 users at once | **321.9** | 31.1 | 63.6 | 237.2 |
+| 8 users at once | **345.2** | 31.1† | N/A‡ | N/A‡ |
+| **RAM (peak increase, GB)** | | | | |
+| Prompt A | 22.10 | **17.74** | 42.61 | 22.56 |
+| Prompt B | 22.10 | **18.27** | 42.95 | 22.70 |
+| Prompt C | 22.11 | **18.73** | 43.33 | 23.14 |
+| Prompt D | 22.11 | **18.85** | 43.14 | 23.73 |
+| 2 users at once | 25.80 | **16.73** | 41.54 | 22.38 |
+| 4 users at once | 25.82 | **17.35** | 42.68 | 23.50 |
+| 8 users at once | 25.84 | **18.16**† | N/A‡ | N/A‡ |
+| **Power (tok/J, tokens per joule)** | | | | |
+| Prompt A | **3.24** | 1.34 | 0.62\* | 1.79 |
+| Prompt B | **3.94** | 1.36 | 0.62\* | 3.17 |
+| Prompt C | 1.85 | 1.36 | 0.59\* | **2.17** |
+| Prompt D | **2.65** | 1.32 | 0.57\* | 1.73 |
+| 2 users at once | **3.93** | 1.32 | 0.73 | 2.66 |
+| 4 users at once | **5.20** | 1.32 | 1.09 | 3.90 |
+| 8 users at once | **5.34** | 1.32† | N/A‡ | N/A‡ |
+
+\* llama.cpp at its default settings (4 slots × 225,280-token context) ran out of GPU memory during prompt A of the 3-pass run; its prompts A to D come from its 1-pass run on a freshly started server. We used the maker's path and did not troubleshoot llama.cpp ourselves; if it runs fine on your M5 Max 48 GB please let us know the speed you are getting.
+† mlx-lm at 8 users at once completed 24 of 32 answers; the other 8 requests failed with ConnectionResetError (the server closed the connection).
+‡ N/A: not served at the engine's default settings (it serves 4 requests at once).
 
 **How it runs.**
 
-- **Tests.** The benchmark built into NukeTorch (`nuketorch-serve bench`).
-- **Run-to-run spread.** The answers are the same every run; the speed is not. Let the Mac rest before you measure. The median of our runs is stored beside the best and shown in every report.
-- **The prompt matters.** Speed follows how many drafted tokens are accepted: 205.0 tok/s on NVIDIA's coding prompts and 164.6 on ours; single answers ranged up to 247.9 tok/s.
-- **Long conversations start slower.** Each turn reads the whole conversation again before it answers: in the conversation test the first token took 2.8 s (median).
-- **Reasoning effort matters.** The server uses effort `medium` when a request sets none. At the model's own default, `xhigh`, an earlier build gave 155.7 tok/s on the SPEED-Bench coding prompts.
+- **Prompts.** A: the five NukeTorch demo coding prompts, 3 passes (15 requests). B: count to 100, 3 requests. C: short story, 3 requests. D: one everyday coding prompt, 3 requests. One request at a time.
+- **Users at once.** The 16 coding prompts in rounds of 2, 4 or 8 requests, 32 requests per level, 1,024 output tokens per request.
+- **Models.** The mlx-community Qwen3.8-27B 4-bit for NukeTorch, mlx-lm and oMLX; llama.cpp reads only GGUF, so it runs the ggml-org Q4_K_M (4-bit). Server default sampling for every engine.
+- **Reasoning effort.** The server uses effort `medium` when a request sets none.
 
-Qwen3.8-27B 4-bit on one Apple M5 Max (48 GB), one user, with its DFlash2 draft model, typical acceptance, reasoning on. Measured by the built-in benchmark: the SPEED-Bench coding row on NukeTorch 1.0.5, the other rows on an earlier release. tok/s is decode speed: per answer, tokens divided by the time from the first token to the last; a test's number is all its tokens divided by those times added up. Reasoning tokens count. The benchmark report compares NukeTorch with mlx-lm, llama.cpp and oMLX on the same Mac.
+Qwen3.8-27B 4-bit on one Apple M5 Max (18 cores, 48 GB, macOS 27.2.1). Every engine runs as its maker ships it: latest release, maker's install, maker's start command, default settings, except NukeTorch's users rows, which used `--users 8`. tok/s is decode speed; reasoning tokens count.
 
-NukeTorch Enterprise runs one model across machines by pipeline parallelism. It is by invitation. Ask for an evaluation license:
-
-[![Request a NukeTorch Enterprise evaluation license](https://img.shields.io/badge/NukeTorch%20Enterprise-Request%20an%20evaluation%20license-121F47?style=for-the-badge)](mailto:contact@nuketorch.ai?subject=NukeTorch%20Enterprise%20evaluation%20request&body=Name%3A%0AOrganization%3A%0AMacs%20%28how%20many%2C%20which%20chips%2C%20memory%29%3A%0AModel%20or%20workload%3A%0A)
+The full report has power per test, the method, versions and the Mac's conditions: [benchmark/qwen38_27b_four_engines_M5.pdf](benchmark/qwen38_27b_four_engines_M5.pdf).
 
 ### How we did it
 
